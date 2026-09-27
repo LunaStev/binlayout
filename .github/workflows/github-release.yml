@@ -19,12 +19,14 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      actions: write
     steps:
       - uses: actions/checkout@v4
         with:
           ref: ${{ github.sha }}
           persist-credentials: false
       - name: Create version tag and release with generated notes
+        id: github-release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_REPO: ${{ github.repository }}
@@ -42,6 +44,8 @@ jobs:
           if not re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?", version):
               raise SystemExit(f"Invalid package version: {version!r}")
           tag = "v" + version
+          with open(os.environ["GITHUB_OUTPUT"], "a") as output:
+              output.write(f"tag={tag}\n")
           repository = os.environ["GH_REPO"]
           target = os.environ["RELEASE_SHA"]
           if not re.fullmatch(r"[0-9a-f]{40}", target):
@@ -87,3 +91,9 @@ jobs:
               command.append("--prerelease")
           subprocess.run(command, check=True)
           PY
+      - name: Start crates.io release workflow
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_TAG: ${{ steps.github-release.outputs.tag }}
+        run: gh workflow run release.yml --repo "$GH_REPO" --ref master --field "tag=$RELEASE_TAG"

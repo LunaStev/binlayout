@@ -5,6 +5,11 @@ on:
     branches: ["**"]
   pull_request:
   workflow_call:
+    inputs:
+      ref:
+        description: Commit to check; defaults to the triggering commit
+        required: false
+        type: string
 
 permissions:
   contents: read
@@ -17,6 +22,8 @@ jobs:
         toolchain: ["1.85.0", stable]
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref || github.sha }}
       - uses: dtolnay/rust-toolchain@master
         with:
           toolchain: ${{ matrix.toolchain }}
@@ -33,6 +40,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref || github.sha }}
       - uses: dtolnay/rust-toolchain@stable
         with:
           targets: i686-unknown-linux-gnu
@@ -44,6 +53,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref || github.sha }}
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: rustfmt, clippy
