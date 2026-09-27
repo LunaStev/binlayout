@@ -38,10 +38,7 @@ assert_eq!(combined.align(), 4);
 padding when a record is finished. `repeat(count)` returns an array layout and
 element stride, including trailing padding for every element.
 
-Unlike [`std::alloc::Layout`](https://doc.rust-lang.org/std/alloc/struct.Layout.html),
-these layouts are not allocation requests and are not bounded by host
-`isize::MAX`. Every addition, round-up, and multiplication that can exceed `u64`
-returns `LayoutError::Overflow`.
+Calculations that exceed `u64` return `LayoutError::Overflow`.
 
 ## Named structures
 
@@ -73,7 +70,7 @@ assert_eq!(header.tail_padding(), 2);
 
 Fields retain declaration order. Duplicate names are errors; unknown names
 return `None`. `header.layout()` can be nested in another structure or repeated
-as an array. Field lookup is linear; construction uses a set to validate names.
+as an array.
 
 For byte-packed wire formats, use `.packed(1)` on the builder: this header then
 has offsets `0, 1, 5`, size `7`, and alignment `1`. A larger power-of-two packing
@@ -135,6 +132,9 @@ Scalar and pointer sizes must be nonzero multiples of alignment. Signed and
 unsigned scalar overrides are independent. For a packed target-specific record,
 pass `target.layout_of(&ty)?` into `StructLayout::builder().field(...)`.
 
+The wasm32 and x86-64 presets cover scalar, pointer, and aggregate layouts;
+they do not implement complete calling conventions or bit-field rules.
+
 ## Unions
 
 Unions place every member at offset zero and round the largest member size up
@@ -163,37 +163,7 @@ the largest member, not unused bytes after a smaller alternative.
 
 - `cargo run --example header`: padding and 32/64-bit pointer layouts.
 - `cargo run --example elf`: ELF32 and ELF64 headers, with every field offset.
-- `cargo run --example protocol`: a byte-packed tagged union with a separately
-  specified tag; both aggregate builders participate in packing.
-
-The ELF example uses the file format's explicit address and offset widths,
-independent of host pointers. Its field definitions follow the
-[ELF header specification](https://gabi.xinuos.com/elf/02-eheader.html), with sizes
-and alignments from the [ELF data representation tables](https://gabi.xinuos.com/elf/01-intro.html#data-representation).
-Tests check all field offsets against literal expected values: ELF32 headers
-occupy 52 bytes and ELF64 headers occupy 64 bytes under those rules.
-
-### Scope of target presets
-
-`wasm32()` follows the supported scalar and pointer rules of the
-[WebAssembly Basic C ABI](https://github.com/WebAssembly/tool-conventions/blob/main/BasicCABI.md).
-`x86_64()` represents the supported portion of the
-[System V LP64 data model](https://gitlab.com/x86-psABIs/x86-64-ABI).
-Neither is a complete ABI implementation. Arrays use element alignment; extra
-alignment for standalone local/global arrays is a placement policy outside this
-model. Pointers do not impose an address-space limit on calculated sizes.
-
-There is no parsing, serialization, byte-order conversion, field reordering,
-calling-convention lowering, bit-field support, or Rust `repr(Rust)` layout
-inference. Endianness does not affect the size and offset calculations provided
-here. ELF or protocol definitions must still supply their specified field types
-and layout rules.
-
-Empty structures and unions have size zero and alignment one. Zero-length arrays retain
-element alignment and validate the element layout. Zero-sized elements have
-zero stride. These are explicit library conventions, not portable C/C++ rules.
-`Type` is an owned, recursively evaluated tree intended for reasonably nested
-schemas, not arbitrarily deep untrusted input.
+- `cargo run --example protocol`: a byte-packed tagged union.
 
 ## `no_std`
 
@@ -206,24 +176,6 @@ binlayout = { version = "0.1", default-features = false }
 
 `alloc` is still required for names and type/field collections. Basic `Layout`
 arithmetic does not allocate.
-
-## Development
-
-```sh
-cargo test
-cargo test --no-default-features
-cargo test --release
-cargo clippy --all-targets --all-features -- -D warnings
-cargo fmt --check
-cargo package --locked
-```
-
-The tests include native `repr(C)` comparisons, literal ELF fixtures, generated
-aggregate invariants, and `u128` arithmetic oracles for `u64` boundary cases.
-CI covers Rust 1.85 and stable, tests on a 32-bit host target, and a `no_std`
-wasm32 build. Pushing a version tag such as `v0.1.0` triggers the release workflow,
-which verifies the tag against Cargo.toml and publishes using the repository's
-`CARGO_TOKEN` secret after CI passes. Ordinary branch pushes only run checks.
 
 ## License
 
