@@ -1,0 +1,24 @@
+[package]
+name = "binlayout"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+description = "Host-independent size, alignment, padding, and offset calculations for binary data models"
+readme = "README.md"
+license = "MPL-2.0"
+repository = "https://github.com/LunaStev/binlayout"
+documentation = "https://docs.rs/binlayout"
+include = ["src/**", "examples/**", "tests/**", "Cargo.toml", "Cargo.lock", "README.md", "LICENSE", "CHANGELOG.md"]
+keywords = ["binary", "layout", "alignment", "abi", "no-std"]
+categories = ["data-structures", "no-std"]
+
+[features]
+default = ["std"]
+std = []
+
+[package.metadata.docs.rs]
+all-features = true
+
+[lints.rust]
+unsafe_code = "forbid"
+missing_docs = "warn"
