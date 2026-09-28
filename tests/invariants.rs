@@ -94,3 +94,76 @@ fn array_rounding_and_multiplication_match_a_wider_integer_oracle() {
         }
     }
 }
+
+#[test]
+fn padding_is_idempotent_across_boundary_cases() {
+    let successful_cases = [
+        (0, 1),
+        (0, 1u64 << 63),
+        (1, 1u64 << 63),
+        (u64::MAX - 8, 8),
+        (u64::MAX - 7, 1),
+    ];
+    for (size, align) in successful_cases {
+        let layout = Layout::new(size, align).unwrap();
+        let padded = layout.pad_to_align().unwrap();
+        assert_eq!(
+            padded.pad_to_align(),
+            Ok(padded),
+            "padding must be idempotent for size {size} and alignment {align}"
+        );
+    }
+
+    let overflowing_cases = [(u64::MAX, 2), (u64::MAX - 1, 1u64 << 63)];
+    for (size, align) in overflowing_cases {
+        assert_eq!(
+            Layout::new(size, align).unwrap().pad_to_align(),
+            Err(LayoutError::Overflow),
+            "padding size {size} to alignment {align} must report overflow"
+        );
+    }
+}
+
+#[test]
+fn raising_alignment_twice_matches_the_maximum_and_preserves_size() {
+    let alignments: [u64; 6] = [1, 2, 4, 8, 1 << 32, 1 << 63];
+    let sizes = [0, 1, 3, u64::MAX - 1, u64::MAX];
+
+    for size in sizes {
+        for initial_align in alignments {
+            let layout = Layout::new(size, initial_align).unwrap();
+            for first in alignments {
+                for second in alignments {
+                    let raised_twice = layout.align_to(first).unwrap().align_to(second).unwrap();
+                    let raised_to_max = layout.align_to(first.max(second)).unwrap();
+                    assert_eq!(
+                        raised_twice, raised_to_max,
+                        "size {size}, initial alignment {initial_align}, requests {first} and {second}"
+                    );
+                    assert_eq!(raised_twice.size(), size);
+                }
+            }
+        }
+    }
+}
+
+#[test]
+fn weaker_alignment_requests_leave_layout_unchanged() {
+    let alignments: [u64; 6] = [1, 2, 4, 8, 1 << 32, 1 << 63];
+    let sizes = [0, 1, 3, u64::MAX - 1, u64::MAX];
+
+    for size in sizes {
+        for current_align in alignments {
+            let layout = Layout::new(size, current_align).unwrap();
+            for requested_align in alignments {
+                if requested_align <= current_align {
+                    assert_eq!(
+                        layout.align_to(requested_align),
+                        Ok(layout),
+                        "size {size}, current alignment {current_align}, weaker request {requested_align}"
+                    );
+                }
+            }
+        }
+    }
+}
