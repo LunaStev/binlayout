@@ -33,6 +33,35 @@ fn extend_defers_tail_padding() {
 }
 
 #[test]
+fn place_at_reports_padding_and_absolute_extent() {
+    let layout = Layout::new(4, 4).unwrap();
+    assert_eq!(layout.place_at(8), Ok((0, 8, 12)));
+    assert_eq!(layout.place_at(9), Ok((3, 12, 16)));
+}
+
+#[test]
+fn place_at_aligns_zero_sized_layouts() {
+    let layout = Layout::new(0, 8).unwrap();
+    assert_eq!(layout.place_at(3), Ok((5, 8, 8)));
+    assert_eq!(layout.place_at(16), Ok((0, 16, 16)));
+}
+
+#[test]
+fn place_at_reports_alignment_and_end_overflow() {
+    let needs_rounding = Layout::new(0, 2).unwrap();
+    assert_eq!(
+        needs_rounding.place_at(u64::MAX),
+        Err(LayoutError::Overflow)
+    );
+
+    let end_overflows = Layout::new(2, 1).unwrap();
+    assert_eq!(
+        end_overflows.place_at(u64::MAX - 1),
+        Err(LayoutError::Overflow)
+    );
+}
+
+#[test]
 fn explicit_alignment_does_not_change_size() {
     let layout = Layout::new(3, 2).unwrap().align_to(16).unwrap();
     assert_eq!((layout.size(), layout.align()), (3, 16));

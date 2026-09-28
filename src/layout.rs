@@ -49,6 +49,26 @@ impl Layout {
         Ok(self.size.wrapping_neg() & (align - 1))
     }
 
+    /// Computes this layout's placement after an absolute byte `cursor`.
+    ///
+    /// Returns `(leading_padding, start, end)`. `cursor`, `start`, and `end`
+    /// are byte positions measured from the beginning of the containing
+    /// buffer; unlike the field offset returned by [`Self::extend`], they are
+    /// not relative to this layout's origin. `end` is exclusive. A zero-sized
+    /// layout still requires its alignment, so placement may advance the
+    /// cursor even when `start == end`.
+    ///
+    /// Returns [`LayoutError::Overflow`] if aligning the cursor or adding the
+    /// layout size cannot fit in `u64`.
+    pub fn place_at(self, cursor: u64) -> Result<(u64, u64, u64), LayoutError> {
+        let leading_padding = cursor.wrapping_neg() & (self.align - 1);
+        let start = cursor
+            .checked_add(leading_padding)
+            .ok_or(LayoutError::Overflow)?;
+        let end = start.checked_add(self.size).ok_or(LayoutError::Overflow)?;
+        Ok((leading_padding, start, end))
+    }
+
     /// Appends `next`, returning the combined layout and `next`'s offset.
     ///
     /// Inserts padding before `next`, but does not add trailing padding to the
