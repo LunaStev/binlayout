@@ -31,66 +31,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_REPO: ${{ github.repository }}
           RELEASE_SHA: ${{ github.sha }}
-        run: |
-          python3 - <<'PY'
-          import json
-          import os
-          import re
-          import subprocess
-          import tomllib
-          from pathlib import Path
-
-          version = tomllib.loads(Path("Cargo.toml").read_text())["package"]["version"]
-          if not re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?", version):
-              raise SystemExit(f"Invalid package version: {version!r}")
-          tag = "v" + version
-          with open(os.environ["GITHUB_OUTPUT"], "a") as output:
-              output.write(f"tag={tag}\n")
-          repository = os.environ["GH_REPO"]
-          target = os.environ["RELEASE_SHA"]
-          if not re.fullmatch(r"[0-9a-f]{40}", target):
-              raise SystemExit("Expected the full SHA of the successful CI commit")
-
-          def api(path, allow_missing=False):
-              result = subprocess.run(
-                  ["gh", "api", f"repos/{repository}/{path}"],
-                  capture_output=True, text=True,
-              )
-              if result.returncode == 0:
-                  return json.loads(result.stdout)
-              if allow_missing and "(HTTP 404)" in result.stderr:
-                  return None
-              raise SystemExit(result.stderr.strip() or "GitHub API request failed")
-
-          # An unchanged Cargo version must not publish again or overwrite notes.
-          if api(f"releases/tags/{tag}", allow_missing=True) is not None:
-              print(f"Release {tag} already exists; skipping.")
-              raise SystemExit(0)
-
-          # Existing tags are reusable only if they identify the tested commit.
-          # Resolve annotated tags as well as lightweight tags; never move a tag.
-          reference = api(f"git/ref/tags/{tag}", allow_missing=True)
-          if reference is not None:
-              obj = reference["object"]
-              for _ in range(16):
-                  if obj["type"] != "tag":
-                      break
-                  obj = api(f"git/tags/{obj['sha']}")["object"]
-              if obj["type"] != "commit" or obj["sha"] != target:
-                  raise SystemExit(f"Tag {tag} does not point to the tested commit; refusing to change it")
-
-          # --target pins a newly created tag to the CI commit, not moving master.
-          command = [
-              "gh", "release", "create", tag,
-              "--repo", repository,
-              "--target", target,
-              "--title", tag,
-              "--generate-notes",
-          ]
-          if "-" in version.split("+", 1)[0]:
-              command.append("--prerelease")
-          subprocess.run(command, check=True)
-          PY
+        run: python3 .github/scripts/github_release.py
       - name: Start crates.io release workflow
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
