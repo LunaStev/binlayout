@@ -9,6 +9,15 @@ on:
         description: Existing version tag to publish (for example v0.1.0)
         required: true
         type: string
+  workflow_call:
+    inputs:
+      tag:
+        description: Existing version tag to publish (for example v0.1.0)
+        required: true
+        type: string
+    secrets:
+      CARGO_TOKEN:
+        required: true
 
 permissions:
   contents: read
@@ -19,6 +28,7 @@ concurrency:
 
 jobs:
   resolve:
+    name: Resolve ${{ inputs.tag || github.ref_name }}
     runs-on: ubuntu-latest
     outputs:
       commit: ${{ steps.version.outputs.commit }}
@@ -40,6 +50,7 @@ jobs:
       ref: ${{ needs.resolve.outputs.commit }}
 
   publish:
+    name: Publish ${{ inputs.tag || github.ref_name }}
     needs: [resolve, verify]
     runs-on: ubuntu-latest
     steps:

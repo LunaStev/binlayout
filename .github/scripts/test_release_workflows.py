@@ -168,18 +168,28 @@ class WorkflowStructureTests(unittest.TestCase):
         cls.release = (ROOT / ".github/workflows/release.yml").read_text()
         cls.ci = (ROOT / ".github/workflows/ci.yml").read_text()
 
-    def test_github_release_is_manual_only_and_dispatches_resolved_tag(self):
+    def test_github_release_is_manual_only_and_links_publish_result(self):
         self.assertIn("on:\n  workflow_dispatch:", self.github_release)
         self.assertNotIn("\n  push:", self.github_release)
         self.assertNotIn("\n  pull_request:", self.github_release)
         self.assertIn("python3 .github/scripts/github_release.py", self.github_release)
         self.assertIn(
-            "RELEASE_TAG: ${{ steps.github-release.outputs.tag }}",
+            "tag: ${{ steps.github-release.outputs.tag }}",
             self.github_release,
         )
-        self.assertIn('--field "tag=$RELEASE_TAG"', self.github_release)
+        self.assertIn("publish:", self.github_release)
+        self.assertIn("needs: release", self.github_release)
+        self.assertIn("uses: ./.github/workflows/release.yml", self.github_release)
+        self.assertIn(
+            "tag: ${{ needs.release.outputs.tag }}",
+            self.github_release,
+        )
+        self.assertIn("secrets: inherit", self.github_release)
+        self.assertNotIn("gh workflow run release.yml", self.github_release)
+        self.assertNotIn("actions: write", self.github_release)
 
     def test_publish_uses_selected_tag_source_and_requires_verification(self):
+        self.assertIn("workflow_call:", self.release)
         self.assertIn(
             "ref: ${{ inputs.tag && format('refs/tags/{0}', inputs.tag) || github.ref }}",
             self.release,
