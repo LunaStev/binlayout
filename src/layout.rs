@@ -94,6 +94,21 @@ impl Layout {
     /// retains element alignment. Zero-sized elements have zero stride.
     /// Returns [`LayoutError::Overflow`] if stride or total size cannot fit,
     /// even when `count` is zero.
+    ///
+    /// An unpadded size-3 element with alignment 2 keeps its extent until it is
+    /// repeated:
+    ///
+    /// ```
+    /// use binlayout::Layout;
+    ///
+    /// let element = Layout::new(3, 2)?;
+    /// assert_eq!(element.size(), 3);
+    ///
+    /// let (array, stride) = element.repeat(3)?;
+    /// assert_eq!(stride, 4);
+    /// assert_eq!(array.size(), 12);
+    /// # Ok::<(), binlayout::LayoutError>(())
+    /// ```
     pub fn repeat(self, count: u64) -> Result<(Self, u64), LayoutError> {
         let stride = self.pad_to_align()?.size;
         let size = stride.checked_mul(count).ok_or(LayoutError::Overflow)?;
