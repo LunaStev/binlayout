@@ -27,6 +27,8 @@ jobs:
       - uses: dtolnay/rust-toolchain@master
         with:
           toolchain: ${{ matrix.toolchain }}
+      - run: python3 -m unittest discover -s .github/scripts -p 'test_*.py'
+        if: matrix.toolchain == 'stable'
       - run: cargo test --locked
       - run: cargo test --locked --no-default-features
       - run: cargo test --locked --release

@@ -31,21 +31,7 @@ jobs:
         id: version
         env:
           RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
-        run: |
-          python3 - <<'PY'
-          import os
-          import subprocess
-          import tomllib
-          from pathlib import Path
-          manifest = tomllib.loads(Path("Cargo.toml").read_text())
-          expected = "v" + manifest["package"]["version"]
-          actual = os.environ["RELEASE_TAG"]
-          if actual != expected:
-              raise SystemExit(f"Tag {actual!r} must match package version {expected!r}")
-          commit = subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip()
-          with open(os.environ["GITHUB_OUTPUT"], "a") as output:
-              output.write(f"commit={commit}\n")
-          PY
+        run: python3 .github/scripts/resolve_release.py
 
   verify:
     needs: resolve
@@ -64,34 +50,7 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
       - name: Check whether the crate version is already published
         id: registry
-        run: |
-          python3 - <<'PY'
-          import os
-          import tomllib
-          import urllib.error
-          import urllib.parse
-          import urllib.request
-          from pathlib import Path
-
-          package = tomllib.loads(Path("Cargo.toml").read_text())["package"]
-          name = urllib.parse.quote(package["name"], safe="")
-          version = urllib.parse.quote(package["version"], safe="")
-          request = urllib.request.Request(
-              f"https://crates.io/api/v1/crates/{name}/{version}",
-              headers={"User-Agent": "binlayout-release-workflow"},
-          )
-          try:
-              with urllib.request.urlopen(request, timeout=30):
-                  published = True
-          except urllib.error.HTTPError as error:
-              if error.code != 404:
-                  raise
-              published = False
-          with open(os.environ["GITHUB_OUTPUT"], "a") as output:
-              output.write(f"published={str(published).lower()}\n")
-          if published:
-              print(f"{package['name']} {package['version']} is already published; skipping.")
-          PY
+        run: python3 .github/scripts/registry_status.py
       - name: Publish to crates.io
         if: steps.registry.outputs.published == 'false'
         env:
