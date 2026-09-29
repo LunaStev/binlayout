@@ -19,7 +19,8 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
-      actions: write
+    outputs:
+      tag: ${{ steps.github-release.outputs.tag }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -32,9 +33,10 @@ jobs:
           GH_REPO: ${{ github.repository }}
           RELEASE_SHA: ${{ github.sha }}
         run: python3 .github/scripts/github_release.py
-      - name: Start crates.io release workflow
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GH_REPO: ${{ github.repository }}
-          RELEASE_TAG: ${{ steps.github-release.outputs.tag }}
-        run: gh workflow run release.yml --repo "$GH_REPO" --ref master --field "tag=$RELEASE_TAG"
+
+  publish:
+    needs: release
+    uses: ./.github/workflows/release.yml
+    with:
+      tag: ${{ needs.release.outputs.tag }}
+    secrets: inherit
