@@ -33,6 +33,15 @@ impl FieldLayout {
         self.offset
     }
 
+    /// Returns the field's occupied half-open byte range in its immediate aggregate.
+    ///
+    /// The range covers the original field extent, including padding already
+    /// inside that field, but excludes any aggregate padding before it. Union
+    /// fields start at zero. A zero-sized field returns an empty range.
+    pub fn range(&self) -> core::ops::Range<u64> {
+        self.offset..self.offset + self.layout.size()
+    }
+
     /// Returns the alignment used for placement, after applying packing.
     pub const fn align(&self) -> u64 {
         self.align
