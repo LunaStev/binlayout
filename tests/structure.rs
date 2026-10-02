@@ -31,6 +31,9 @@ fn header_offsets_padding_and_lookup() {
         [0, 3, 0]
     );
     assert_eq!(header.fields()[1].name(), "length");
+    assert_eq!(header.field("tag").unwrap().range(), 0..1);
+    assert_eq!(header.field("length").unwrap().range(), 4..8);
+    assert_eq!(header.field("flags").unwrap().range(), 8..10);
     assert_eq!(header.tail_padding(), 2);
 }
 
@@ -44,6 +47,7 @@ fn byte_packed_header() {
     let length = header.field("length").unwrap();
     assert_eq!(length.align(), 1);
     assert_eq!(length.layout().align(), 4);
+    assert_eq!(length.range(), 1..5);
 }
 
 #[test]
@@ -81,6 +85,17 @@ fn empty_and_zero_sized_fields_preserve_alignment() {
     assert_eq!(zst.offset("zero"), Some(8));
     assert_eq!(zst.offset("also_zero"), Some(8));
     assert_eq!(zst.fields()[1].padding_before(), 7);
+    assert_eq!(zst.field("zero").unwrap().range(), 8..8);
+}
+
+#[test]
+fn field_range_can_end_at_u64_max() {
+    let layout = StructLayout::builder()
+        .field("prefix", Layout::new(1, 1).unwrap())
+        .field("rest", Layout::new(u64::MAX - 1, 1).unwrap())
+        .build()
+        .unwrap();
+    assert_eq!(layout.field("rest").unwrap().range(), 1..u64::MAX);
 }
 
 #[test]

@@ -25,6 +25,8 @@ fn union_rounds_largest_size_to_largest_alignment() {
     assert_eq!(payload.offset("number"), Some(0));
     assert_eq!(payload.offset("unknown"), None);
     assert_eq!(payload.field("unknown"), None);
+    assert_eq!(payload.field("bytes").unwrap().range(), 0..9);
+    assert_eq!(payload.field("number").unwrap().range(), 0..8);
     for field in payload.fields() {
         assert_eq!(field.padding_before(), 0);
         assert_eq!(field.layout().align(), field.align());
@@ -62,6 +64,7 @@ fn empty_and_zero_sized_unions() {
         .unwrap();
     assert_eq!(zst.layout(), Layout::new(0, 8).unwrap());
     assert_eq!(zst.offset("zero"), Some(0));
+    assert_eq!(zst.field("zero").unwrap().range(), 0..0);
 }
 
 #[test]
