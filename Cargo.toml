@@ -8,7 +8,7 @@ readme = "README.md"
 license = "MPL-2.0"
 repository = "https://github.com/LunaStev/binlayout"
 documentation = "https://docs.rs/binlayout"
-include = ["src/**", "examples/**", "tests/**", "Cargo.toml", "Cargo.lock", "README.md", "LICENSE", "CHANGELOG.md"]
+include = ["src/**", "examples/**", "tests/**", "benches/layout_cost.rs", "Cargo.toml", "Cargo.lock", "README.md", "LICENSE", "CHANGELOG.md"]
 keywords = ["binary", "layout", "alignment", "abi", "no-std"]
 categories = ["data-structures", "no-std"]
 
@@ -18,6 +18,10 @@ std = []
 
 [package.metadata.docs.rs]
 all-features = true
+
+[[bench]]
+name = "layout_cost"
+harness = false
 
 [lints.rust]
 unsafe_code = "forbid"

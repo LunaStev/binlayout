@@ -56,6 +56,33 @@ cargo +stable package --locked
 RUSTDOCFLAGS="-D warnings" cargo +stable doc --locked --no-deps
 ```
 
+## Layout cost benchmark
+
+Run the optimized benchmark on an idle machine and record the toolchain,
+host OS, CPU and power mode with the results:
+
+```sh
+rustc -Vv
+cargo bench --locked --bench layout_cost > layout-cost.csv
+```
+
+The output reports min, median and max nanoseconds per operation across five
+samples. Each case warms up while calibrating its iteration count toward
+12 ms per sample. Compare runs on the same machine and toolchain. Repeat
+the run to check noise, especially for the smallest lookups. These
+measurements have no pass/fail limit.
+
+- Named structures and unions use 4, 16, 64 or 256 fields with 8-byte ASCII
+  names. The 64-field case also uses 32- and 128-byte names. A common prefix
+  makes the comparisons sensitive to name length.
+- Construction includes copying field names into the public builder,
+  validating them, placing fields and releasing the result. Lookup uses a
+  prebuilt layout and a precomputed first, middle, last or missing name.
+- Recursive target calculations use a fixed x86-64 data model and vary
+  structure nesting depth or array count. Type construction is outside the
+  measured loop. Array count represents layout arithmetic, without allocating
+  the array's data.
+
 ## Optional cross-target checks
 
 CI checks the library for WebAssembly and runs tests for 32-bit Linux. These
